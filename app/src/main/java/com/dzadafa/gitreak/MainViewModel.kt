@@ -2,6 +2,7 @@ package com.dzadafa.gitreak
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -35,6 +36,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = application.getSharedPreferences("GITREAK_PREFS", Context.MODE_PRIVATE)
     private val token = prefs.getString("GITHUB_TOKEN", null)
     private val username = prefs.getString("GITHUB_USERNAME", null)
+
+    companion object {
+        const val ACTION_STREAK_UPDATED = "com.dzadafa.gitreak.ACTION_STREAK_UPDATED"
+        const val PREF_STREAK_COUNT = "WIDGET_STREAK_COUNT"
+        const val PREF_CONTRIBUTED_TODAY = "WIDGET_CONTRIBUTED_TODAY"
+    }
 
     fun fetchData() {
         if (token == null || username == null) {
@@ -77,6 +84,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
                 val info = calculateStreakInfo(allDays)
                 _streakInfo.postValue(info)
+
+                prefs.edit()
+                    .putInt(PREF_STREAK_COUNT, info.streakCount)
+                    .putBoolean(PREF_CONTRIBUTED_TODAY, info.contributedToday)
+                    .apply()
+
+                sendDataUpdatedBroadcast()
 
                 _detailedContributions.postValue("Total Contributions (Last Year): ${calendar?.totalContributions ?: 0}")
             } else {
@@ -139,5 +153,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } catch (e: Exception) {
             _error.postValue("Exception: ${e.message}")
         }
+    }
+
+    private fun sendDataUpdatedBroadcast() {
+        val intent = Intent(ACTION_STREAK_UPDATED)
+        getApplication<Application>().applicationContext.sendBroadcast(intent)
     }
 }
