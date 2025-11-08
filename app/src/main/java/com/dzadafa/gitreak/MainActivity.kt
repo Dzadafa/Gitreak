@@ -30,10 +30,11 @@ class MainActivity : AppCompatActivity() {
             binding.cardLastActivity.visibility = View.VISIBLE
             binding.cardDetails.visibility = View.VISIBLE
 
-            val streakText = "Streak: ${info.streakCount}"
+            val displayStreak = if (info.contributedToday) info.streakCount + 1 else info.streakCount
+            val streakText = "Streak: $displayStreak"
             binding.tvStreak.text = streakText
 
-            if (info.streakCount == 0 && !info.contributedToday) {
+            if (displayStreak == 0) {
                 binding.tvStreak.text = "No Streak"
                 binding.tvStreakStatus.text = "Start your streak today!"
                 binding.ivStreakIcon.setImageResource(R.drawable.ic_fire_off)

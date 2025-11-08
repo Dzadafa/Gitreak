@@ -5,4 +5,5 @@
 
     <color name="icon_green_active">#FF3DDC84</color>
     <color name="icon_gray_inactive">#FF6E6E6E</color>
+    <color name="widget_default_background">#FFF7F7F7</color>
 </resources>
