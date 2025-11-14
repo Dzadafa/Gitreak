@@ -57,4 +57,5 @@ dependencies {
     implementation(libs.androidx.activity.ktx)
     implementation(libs.gson)
     implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.work.runtime.ktx)
 }

@@ -156,7 +156,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun sendDataUpdatedBroadcast() {
-        val intent = Intent(ACTION_STREAK_UPDATED)
-        getApplication<Application>().applicationContext.sendBroadcast(intent)
+        val context = getApplication<Application>().applicationContext
+        val intent = Intent(context, GitreakWidget::class.java).apply {
+            action = ACTION_STREAK_UPDATED
+        }
+        context.sendBroadcast(intent)
     }
 }
