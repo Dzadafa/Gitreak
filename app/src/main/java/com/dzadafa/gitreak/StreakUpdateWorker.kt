@@ -1,14 +1,20 @@
 package com.dzadafa.gitreak
 
-import android.app.Application
+import android.Manifest
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.dzadafa.gitreak.data.ContributionDay
 import com.dzadafa.gitreak.data.GraphqlQuery
 import com.dzadafa.gitreak.data.RetrofitClient
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 class StreakUpdateWorker(
@@ -26,14 +32,17 @@ class StreakUpdateWorker(
         }
 
         return try {
-            fetchContributionStreak("Bearer $token", username)
+            val info = fetchContributionStreak("Bearer $token", username)
+            if (info != null) {
+                checkAndSendNotification(info)
+            }
             Result.success()
         } catch (e: Exception) {
             Result.failure()
         }
     }
 
-    private suspend fun fetchContributionStreak(authHeader: String, username: String) {
+    private suspend fun fetchContributionStreak(authHeader: String, username: String): StreakInfo? {
         val query = """
             query {
               user(login: "$username") {
@@ -68,7 +77,9 @@ class StreakUpdateWorker(
                 .apply()
 
             sendDataUpdatedBroadcast()
+            return info
         }
+        return null
     }
 
     private fun calculateStreakInfo(days: List<ContributionDay>): StreakInfo {
@@ -100,6 +111,44 @@ class StreakUpdateWorker(
             }
         }
         return StreakInfo(currentStreak, contributedToday)
+    }
+
+    private fun checkAndSendNotification(info: StreakInfo) {
+        val now = LocalDateTime.now()
+        val isPending = !info.contributedToday
+        val hasStreak = info.streakCount > 0
+        val isLate = now.hour >= 20
+
+        if (isPending && hasStreak && isLate) {
+            sendNotification(info.streakCount)
+        }
+    }
+
+    private fun sendNotification(streakCount: Int) {
+        val intent = Intent(context, SplashActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+
+        val displayStreak = streakCount + 1
+        val builder = NotificationCompat.Builder(context, GitreakApplication.CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_fire_off)
+            .setContentTitle("Your Gitreak streak is in danger!")
+            .setContentText("You haven't contributed today. Keep your ${displayStreak}-day streak alive!")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+
+        with(NotificationManagerCompat.from(context)) {
+            if (ActivityCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                return
+            }
+            notify(1, builder.build())
+        }
     }
 
     private fun sendDataUpdatedBroadcast() {
