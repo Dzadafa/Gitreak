@@ -17,6 +17,32 @@ class StreakFreezeManager(private val context: Context) {
     companion object {
         private const val KEY_FREEZE_LOG = "freeze_usage_log"
         private const val BRANCH = "main"
+        private const val HISTORY_FOLDER = "gitreak_history"
+    }
+
+    fun isDateFrozen(date: LocalDate): Boolean {
+        val dateString = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        return getFreezeLog().contains(dateString)
+    }
+
+    suspend fun syncHistory(username: String, token: String) {
+        try {
+            val authHeader = "Bearer $token"
+            val response = RetrofitClient.instance.getContents(authHeader, username, username, HISTORY_FOLDER)
+            
+            if (response.isSuccessful && response.body() != null) {
+                val remoteLog = mutableSetOf<String>()
+                response.body()!!.forEach { file ->
+                    if (file.name.startsWith("freeze_") && file.name.endsWith(".txt")) {
+                        val datePart = file.name.removePrefix("freeze_").removeSuffix(".txt")
+                        remoteLog.add(datePart)
+                    }
+                }
+                prefs.edit().putStringSet(KEY_FREEZE_LOG, remoteLog).apply()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun getRemainingFreezes(): Int {
@@ -24,7 +50,9 @@ class StreakFreezeManager(private val context: Context) {
         val currentWeekStart = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         
         val usedThisWeek = log.count { 
-            val date = LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE)
+            val date = try {
+                LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE)
+            } catch (e: Exception) { LocalDate.MIN }
             !date.isBefore(currentWeekStart)
         }
 
@@ -50,7 +78,7 @@ class StreakFreezeManager(private val context: Context) {
             val blobSha = blobResponse.body()!!.sha
 
             val treeElement = TreeElement(
-                path = "gitreak_history/freeze_$dateString.txt",
+                path = "$HISTORY_FOLDER/freeze_$dateString.txt",
                 sha = blobSha
             )
             val treeResponse = api.createTree(authHeader, username, repoName, CreateTreeRequest(base_tree = latestCommitSha, tree = listOf(treeElement)))

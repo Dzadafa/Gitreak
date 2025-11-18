@@ -97,6 +97,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupObservers() {
         viewModel.streakInfo.observe(this) { info ->
+            
             binding.progressBar.visibility = View.GONE
             binding.cardStreak.visibility = View.VISIBLE
             binding.cardLastActivity.visibility = View.VISIBLE
@@ -112,11 +113,19 @@ class MainActivity : AppCompatActivity() {
                 binding.ivStreakIcon.setImageResource(R.drawable.ic_fire_off)
                 binding.btnFreeze.visibility = View.VISIBLE 
                 binding.tvFreezeCount.visibility = View.VISIBLE
+
             } else if (info.contributedToday) {
                 binding.tvStreakStatus.text = "Today: Contributed!"
                 binding.ivStreakIcon.setImageResource(R.drawable.ic_fire)
                 binding.btnFreeze.visibility = View.GONE
                 binding.tvFreezeCount.visibility = View.GONE
+
+            } else if (info.isFrozen) {
+                binding.tvStreakStatus.text = "Contribute to unfreeze"
+                binding.ivStreakIcon.setImageResource(R.drawable.ic_freeze) 
+                binding.btnFreeze.visibility = View.GONE
+                binding.tvFreezeCount.visibility = View.GONE
+
             } else {
                 binding.tvStreakStatus.text = "Today: Pending"
                 binding.ivStreakIcon.setImageResource(R.drawable.ic_fire_off)

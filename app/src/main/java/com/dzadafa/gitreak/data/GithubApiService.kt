@@ -65,4 +65,19 @@ interface GithubApiService {
         @Path("repo") repo: String,
         @Body tree: CreateTreeRequest
     ): Response<GitTree>
+    
+    @GET("repos/{owner}/{repo}/contents/{path}")
+    suspend fun getContents(
+        @Header("Authorization") token: String,
+        @Path("owner") owner: String,
+        @Path("repo") repo: String,
+        @Path("path") path: String
+    ): Response<List<RepoContent>>
 }
+
+data class RepoContent(
+    val name: String,
+    val path: String,
+    val sha: String,
+    val type: String
+)

@@ -40,6 +40,8 @@ class GitreakWidget : AppWidgetProvider() {
             val streakCount = prefs.getInt(MainViewModel.PREF_STREAK_COUNT, 0)
             val contributedToday =
                 prefs.getBoolean(MainViewModel.PREF_CONTRIBUTED_TODAY, false)
+            val isFrozen = 
+                prefs.getBoolean(MainViewModel.PREF_IS_FROZEN, false)
 
             val displayStreak = if (contributedToday) streakCount + 1 else streakCount
 
@@ -49,8 +51,13 @@ class GitreakWidget : AppWidgetProvider() {
                 } else {
                     RemoteViews(context.packageName, R.layout.gitreak_widget_layout).apply {
                         setTextViewText(R.id.tv_widget_streak, displayStreak.toString())
-                        val iconRes =
-                            if (contributedToday) R.drawable.ic_fire else R.drawable.ic_fire_off
+                        
+                        val iconRes = when {
+                            contributedToday -> R.drawable.ic_fire
+                            isFrozen -> R.drawable.ic_freeze 
+                            else -> R.drawable.ic_fire_off
+                        }
+                        
                         setImageViewResource(R.id.iv_widget_fire, iconRes)
                     }
                 }

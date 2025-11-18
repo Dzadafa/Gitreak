@@ -22,6 +22,8 @@ class StreakUpdateWorker(
     workerParams: WorkerParameters
 ) : CoroutineWorker(context, workerParams) {
 
+    private val freezeManager = StreakFreezeManager(context)
+
     override suspend fun doWork(): Result {
         val prefs = context.getSharedPreferences("GITREAK_PREFS", Context.MODE_PRIVATE)
         val token = prefs.getString("GITHUB_TOKEN", null)
@@ -32,6 +34,8 @@ class StreakUpdateWorker(
         }
 
         return try {
+            freezeManager.syncHistory(username, token)
+            
             val info = fetchContributionStreak("Bearer $token", username)
             if (info != null) {
                 checkAndSendNotification(info)
@@ -74,6 +78,7 @@ class StreakUpdateWorker(
             prefs.edit()
                 .putInt(MainViewModel.PREF_STREAK_COUNT, info.streakCount)
                 .putBoolean(MainViewModel.PREF_CONTRIBUTED_TODAY, info.contributedToday)
+                .putBoolean(MainViewModel.PREF_IS_FROZEN, info.isFrozen)
                 .apply()
 
             sendDataUpdatedBroadcast()
@@ -83,7 +88,7 @@ class StreakUpdateWorker(
     }
 
     private fun calculateStreakInfo(days: List<ContributionDay>): StreakInfo {
-        if (days.isEmpty()) return StreakInfo(0, false)
+        if (days.isEmpty()) return StreakInfo(0, false, false)
 
         val sortedDays = days.sortedByDescending { it.date }
         val todayDate = LocalDate.now()
@@ -91,6 +96,8 @@ class StreakUpdateWorker(
 
         val todayEntry = sortedDays.firstOrNull { it.date == todayDate.toString() }
         val contributedToday = (todayEntry?.contributionCount ?: 0) > 0
+        
+        val isFrozen = freezeManager.isDateFrozen(yesterdayDate)
 
         var currentStreak = 0
         var expectedDate = yesterdayDate
@@ -110,7 +117,7 @@ class StreakUpdateWorker(
                 break
             }
         }
-        return StreakInfo(currentStreak, contributedToday)
+        return StreakInfo(currentStreak, contributedToday, isFrozen)
     }
 
     private fun checkAndSendNotification(info: StreakInfo) {
