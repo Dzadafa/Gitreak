@@ -9,6 +9,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.dzadafa.gitreak.data.ContributionDay
 import com.dzadafa.gitreak.data.GithubApiService
+import com.dzadafa.gitreak.data.GithubEvent
 import com.dzadafa.gitreak.data.GraphqlQuery
 import com.dzadafa.gitreak.data.RetrofitClient
 import kotlinx.coroutines.launch
@@ -143,7 +144,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (response.isSuccessful && response.body() != null) {
                 val lastEvent = response.body()?.firstOrNull()
                 if (lastEvent != null) {
-                    _lastActivity.postValue("Last Activity: ${lastEvent.type} on ${lastEvent.repo?.name}")
+                    _lastActivity.postValue(parseEventToString(lastEvent))
                 } else {
                     _lastActivity.postValue("No recent public activity found.")
                 }
@@ -152,6 +153,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         } catch (e: Exception) {
             _error.postValue("Exception: ${e.message}")
+        }
+    }
+
+    private fun parseEventToString(event: GithubEvent): String {
+        val repoName = event.repo?.name ?: "a repository"
+        val payload = event.payload
+
+        return when (event.type) {
+            "PushEvent" -> {
+                val size = payload?.commits?.size ?: 0
+                val s = if (size == 1) "" else "s"
+                "Pushed $size commit$s to $repoName"
+            }
+            "PullRequestEvent" -> {
+                val action = payload?.action ?: "interacted with"
+                val prNumber = payload?.pullRequest?.number
+                "Last Activity: ${action.replaceFirstChar { it.uppercase() }} pull request #$prNumber in $repoName"
+            }
+            "CreateEvent" -> {
+                val refType = payload?.refType ?: "something"
+                "Created a new $refType in $repoName"
+            }
+            "WatchEvent" -> "Starred $repoName"
+            "ForkEvent" -> "Forked $repoName"
+            else -> "${event.type} on $repoName"
         }
     }
 
