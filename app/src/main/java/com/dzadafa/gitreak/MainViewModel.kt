@@ -7,20 +7,17 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import com.dzadafa.gitreak.data.ContributionDay
-import com.dzadafa.gitreak.data.GithubApiService
-import com.dzadafa.gitreak.data.GithubEvent
-import com.dzadafa.gitreak.data.GraphqlQuery
-import com.dzadafa.gitreak.data.RetrofitClient
+import com.dzadafa.gitreak.data.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-data class StreakInfo(val streakCount: Int, val contributedToday: Boolean)
+data class StreakInfo(val streakCount: Int, val contributedToday: Boolean, val isFrozen: Boolean)
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val apiService: GithubApiService = RetrofitClient.instance
+    private val freezeManager = StreakFreezeManager(application)
 
     private val _streakInfo = MutableLiveData<StreakInfo>()
     val streakInfo: LiveData<StreakInfo> = _streakInfo
@@ -42,6 +39,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         const val ACTION_STREAK_UPDATED = "com.dzadafa.gitreak.ACTION_STREAK_UPDATED"
         const val PREF_STREAK_COUNT = "WIDGET_STREAK_COUNT"
         const val PREF_CONTRIBUTED_TODAY = "WIDGET_CONTRIBUTED_TODAY"
+        const val PREF_IS_FROZEN = "WIDGET_IS_FROZEN"
     }
 
     fun fetchData() {
@@ -53,6 +51,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val authHeader = "Bearer $token"
 
         viewModelScope.launch {
+            // Sync history first to ensure freeze count/status is accurate
+            freezeManager.syncHistory(username, token)
+            
             fetchContributionStreak(authHeader, username)
             fetchLastActivity(authHeader, username)
         }
@@ -89,6 +90,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 prefs.edit()
                     .putInt(PREF_STREAK_COUNT, info.streakCount)
                     .putBoolean(PREF_CONTRIBUTED_TODAY, info.contributedToday)
+                    .putBoolean(PREF_IS_FROZEN, info.isFrozen)
                     .apply()
 
                 sendDataUpdatedBroadcast()
@@ -103,7 +105,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun calculateStreakInfo(days: List<ContributionDay>): StreakInfo {
-        if (days.isEmpty()) return StreakInfo(0, false)
+        if (days.isEmpty()) return StreakInfo(0, false, false)
 
         val sortedDays = days.sortedByDescending { it.date }
         val todayDate = LocalDate.now()
@@ -111,6 +113,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         val todayEntry = sortedDays.firstOrNull { it.date == todayDate.toString() }
         val contributedToday = (todayEntry?.contributionCount ?: 0) > 0
+        
+        val isFrozen = freezeManager.isDateFrozen(yesterdayDate)
 
         var currentStreak = 0
         var expectedDate = yesterdayDate
@@ -135,7 +139,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 break
             }
         }
-        return StreakInfo(currentStreak, contributedToday)
+        return StreakInfo(currentStreak, contributedToday, isFrozen)
     }
 
     private suspend fun fetchLastActivity(authHeader: String, username: String) {

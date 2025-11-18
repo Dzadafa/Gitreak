@@ -126,6 +126,29 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
+    <Button
+        android:id="@+id/btnFreeze"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:backgroundTint="#FF2196F3"
+        android:text="Use Streak Freeze (Repair Yesterday)"
+        app:icon="@drawable/ic_fire"
+        app:layout_constraintEnd_toEndOf="@id/cardStreak"
+        app:layout_constraintStart_toStartOf="@id/cardStreak"
+        app:layout_constraintTop_toBottomOf="@id/cardDetails" />
+
+    <TextView
+        android:id="@+id/tvFreezeCount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Freezes remaining this week: 2/2"
+        android:textSize="12sp"
+        app:layout_constraintEnd_toEndOf="@id/btnFreeze"
+        app:layout_constraintStart_toStartOf="@id/btnFreeze"
+        app:layout_constraintTop_toBottomOf="@id/btnFreeze" />
+
     <ProgressBar
         android:id="@+id/progressBar"
         android:layout_width="wrap_content"

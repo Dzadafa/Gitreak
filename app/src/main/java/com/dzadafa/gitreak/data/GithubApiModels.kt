@@ -66,3 +66,58 @@ data class PullRequest(
     val title: String,
     val number: Int
 )
+
+data class GitReference(
+    val ref: String,
+    val node_id: String,
+    val url: String,
+    val `object`: GitObject
+)
+
+data class GitObject(
+    val sha: String,
+    val type: String,
+    val url: String
+)
+
+data class CreateBlobRequest(
+    val content: String,
+    val encoding: String = "utf-8"
+)
+
+data class GitBlob(val sha: String)
+
+data class CreateTreeRequest(
+    val base_tree: String,
+    val tree: List<TreeElement>
+)
+
+data class TreeElement(
+    val path: String,
+    val mode: String = "100644", 
+    val type: String = "blob",
+    val sha: String
+)
+
+data class GitTree(val sha: String)
+
+data class CreateCommitRequest(
+    val message: String,
+    val tree: String,
+    val parents: List<String>,
+    val author: CommitUser,
+    val committer: CommitUser
+)
+
+data class CommitUser(
+    val name: String,
+    val email: String,
+    val date: String 
+)
+
+data class GitCommit(val sha: String)
+
+data class UpdateRefRequest(
+    val sha: String,
+    val force: Boolean = false
+)
